@@ -1,0 +1,25 @@
+{
+  "name": "galhud",
+  "version": "1.0.0",
+  "description": "",
+  "main": "galhud.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "book": "file:../book",
+    "csstype": "",
+    "entity": "file:../entity",
+    "form": "file:../form",
+    "format": "file:../format",
+    "galho": "file:../galho",
+    "galhui": "file:../galhui",
+    "handler": "file:../handler",
+    "inutil": "file:../inutil",
+    "jcalc": "file:../jcalc",
+    "orray": "file:../orray"
+  }
+}

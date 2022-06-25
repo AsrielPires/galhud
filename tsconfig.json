@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "removeComments": false,
+    // "sourceMap": true,
+    "inlineSourceMap":true,
+    "declaration":false,
+    "lib": [ "ES2021.String", "DOM" ],
+    "alwaysStrict": true,
+    // "strictBindCallApply": true,
+    // "strictFunctionTypes": true,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "noImplicitThis": true
+  },
+  "compileOnSave": true,
+  "exclude": [
+    "node_modules"
+  ]
+}
