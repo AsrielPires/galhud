@@ -1,16 +1,17 @@
-import { $ as ett$, Bond, Field, fields, fieldTypes } from "entity";
+import { $ as ett$, Bond, createBond, entity, Field, fields, fieldTypes } from "entity";
 import { Rec } from "entity/core";
-import { One } from "galho";
+import { div, g, One, S } from "galho";
 import { RecordStyle } from "galhui/list";
 import { defRenderer, FieldPlatform, list as rawList } from "galhui/list";
-import { output } from "galhui/io";
+import { input, output } from "galhui/io";
 import Table, { TableColumn, TableOption } from "galhui/table";
-import { byKey, sub, t } from "inutil";
+import { byKey, isF, sub, t } from "inutil";
 import { copy, set } from "orray";
 import { card } from "./card";
 import { size } from "./fields";
-import { mdPut } from "./form";
+import { mdPost, mdPut } from "./form";
 import { all, ctxMenu, tryRemove } from "./tools";
+import { ibutton, $, C } from "galhui";
 
 interface IEttCrud {
   add?(): any;
@@ -26,16 +27,24 @@ interface IEttCrud {
 }
 
 export interface ilist extends IEttCrud {
-  options?: ((item: Rec, index: number) => One)[];
+  item?: (value: Rec) => any;
+  head?: S<HTMLTableSectionElement>;
+  foot?: S<HTMLTableSectionElement>;
+  // options?: ((item: Rec, index: number) => One)[];
 }
-export const list = (bond: Bond, model: ilist = {}) => rawList<Rec>({
-  single: model.single,
-  open: model.open || model.edit || ((value) => mdPut(bond.target, value?.id)),
-  remove: (...value) => tryRemove(bond.target, sub(value, "id")),
-  menu: () => ctxMenu(bond, { edit: model.edit }),
-  options: model.options,
-  item: card(bond)
-}, bond.bind());
+export function list(bond: Bond, i: ilist | ((value: Rec) => any) = {}) {
+  isF(i) && (i = { item: i });
+  return rawList<Rec>({
+    single: i.single,
+    open: i.open || i.edit || ((value) => mdPut(bond.target, value?.id)),
+    remove: (...value) => tryRemove(bond.target, sub(value, "id")),
+    menu: () => ctxMenu(bond, { edit: (i as ilist).edit }),
+    head: i.head,
+    foot: i.foot,
+    // options: i.options,
+    item: i.item || card(bond)
+  }, bond.bind());
+}
 
 
 export interface itable extends IEttCrud {
@@ -75,7 +84,24 @@ export function table(bond: Bond, i: itable = {}) {
     resize: true,
     style: i.style || ent.style,
     allColumns,
-    key:"id",
+    key: "id",
     columns: copy(bond.fields, v => byKey(allColumns, v))
   }, bond.bind());
+}
+
+export async function single(key: str) {
+  let ent = await entity(key);
+  return [
+    list(new Bond(ent, ["name", "info"]), {
+      item: v => [
+        g("td", "bd", [v.name, v.info && (`(${v.info})`)]),
+        g("td", 0, ibutton($.i.edit, null, () => mdPut(ent, v.id)).cls(C.extra))
+      ],
+      foot: g("tr", 0, [
+        g("td"),
+        g("td", 0, input("text", "name", "Designação")),
+        g("td", 0, ibutton($.i.plus, null, () => mdPost(ent))),
+      ]),
+    })
+  ];
 }
