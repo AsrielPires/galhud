@@ -12,6 +12,7 @@
   "dependencies": {
     "book": "file:../book",
     "csstype": "",
+    "dic": "file:../dic",
     "entity": "file:../entity",
     "form": "file:../form",
     "format": "file:../format",
