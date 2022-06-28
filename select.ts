@@ -4,7 +4,7 @@ import { IInput, Input } from "form";
 import { clearEvent, div, g } from "galho";
 import { vScroll } from "galho/s";
 import { defRenderer, OutputCtx } from "galhui/list";
-import {  } from "galhui/menu";
+import { } from "galhui/menu";
 import { menubar, menuitem } from "galhui/menu";
 import { Pagging } from "galhui/io";
 import { IRoot, keydown, setRoot, setValue } from "galhui/dropdown";
@@ -258,7 +258,12 @@ export function addInputs(types: Dic<FieldType>) {
 
   type SelectField = Field & { src: str | IBond };
 
-  let output: (ctx: OutputCtx, o: SelectField) => any;
+  let
+    output: (ctx: OutputCtx, o: SelectField) => any,
+    init = async (f: SelectField, tp) => {
+      if (tp == FieldActionType.set || ett$.linkTp != LinkType.processed)
+        await entity(f.src);
+    };
   switch (ett$.linkTp) {
     case LinkType.processed:
       output = ({ v, p }) => v || p.null;
@@ -277,38 +282,36 @@ export function addInputs(types: Dic<FieldType>) {
       }) : p.null;
       break;
   }
-  types["link"] = <FieldType>{
-    input: (i: SelectField) => new SelectInput(i),
-    output,
-    async init(f: SelectField, tp) {
-      if (tp == FieldActionType.set || ett$.linkTp != LinkType.processed)
-        await entity(f.src);
+  ex(types, {
+    link: <FieldType>{
+      input: (i: SelectField) => new SelectInput(i),
+      output, init,
+      size: () => 10
     },
-    size: () => 10
-  };
-  // types["mlink"] = <FieldType>{
-  //   input: ({ key, req, link }: SelectField) => new MSelectInput({ key, req, link }),
-  //   output({ v, p }, o: SelectField) {
-  //     if (v == null) return p.null;
-  //     switch (ett$.linkTp) {
-  //       case LinkType.processed:
-  //         return v;
-  //       case LinkType.raw:
-  //         return wait(async () => {
-  //           let e = await entity(o.link);
-  //           return (await select(e, {
-  //             tp: "col",
-  //             where: `in(${[ett$.id(e)]},${v})`,
-  //             fields: [e.main]
-  //           })).join('; ');
-  //         });
-  //       case LinkType.sub:
-  //         return wait(async () => {
-  //           let m = (await entity(o.link)).main;
-  //           return (<any[]>v).map(v => v[m]).join('; ');
-  //         });
-  //     }
-  //   },
-  //   size: () => 10
-  // };
+    mlink: <FieldType>{
+      input: ({ key, req, link }: SelectField) => new MSelectInput({ key, req, link }),
+      output({ v, p }, o: SelectField) {
+        if (v == null) return p.null;
+        switch (ett$.linkTp) {
+          case LinkType.processed:
+            return v;
+          case LinkType.raw:
+            return wait(async () => {
+              let e = await entity(o.link);
+              return (await select(e, {
+                tp: "col",
+                where: `in(${[ett$.id(e)]},${v})`,
+                fields: [e.main]
+              })).join('; ');
+            });
+          case LinkType.sub:
+            return wait(async () => {
+              let m = (await entity(o.link)).main;
+              return (<any[]>v).map(v => v[m]).join('; ');
+            });
+        }
+      }, init,  
+      size: () => 10
+    }
+  });
 }

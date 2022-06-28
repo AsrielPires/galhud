@@ -1,7 +1,7 @@
-import { $ as ett$, Field, FieldType, fieldTypes as types, IBond } from "entity";
+import { $ as ett$, Field, FieldActionType, FieldType, fieldTypes as types, IBond } from "entity";
 import { Input } from "form";
 import {
-  checkbox as checkboxIn, date as dateIn, DateInputType, NumberInput, radio as radioIn, text as textIn, TextInput, time as timeIn
+  checkbox as checkboxIn, date as dateIn, DateInputType, NumberInput, RadioInput, text as textIn, TextInput, time as timeIn
 } from "form/inputs";
 import { time } from "format";
 import scalar from "format/scalar";
@@ -128,13 +128,14 @@ export function addBaseTypes(types: Dic<FieldType>) {
   });
 
   addType("radio", {
-    output: ({ v, p }, o: RadioField) => v == null ? p.null : ett$.enumView(o.enum, v),
-    input: ({ key, req, enum: e }: RadioField) => radioIn(key, <L>ett$.enum(e), req),
+    output: ({ v, p }, o: RadioField) => v == null ? p.null : ett$.enumView(o.src, v),
+    input: ({ key, req, src }: RadioField) => new RadioInput({ key, options: <L>ett$.enum(src), req }),
+    init(o: RadioField) { ett$.enum(o.src) },
     size: () => 4
   });
 
 }
-type RadioField = Field & { enum?: str; };
+type RadioField = Field & { src?: str; };
 type DateField = FmtField & { input: DateInputType };
 export const text = (key: str, opts: Partial<Field> = {}) =>
   field(key, "text", opts);

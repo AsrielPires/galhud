@@ -1,18 +1,20 @@
-import { $ as ett$, Bond, createBond, entity, Field, fields, fieldTypes } from "entity";
+import { $ as ett$, Bond, createBond, entity, field, Field, FieldActionType, fields, fieldTypes, initFields } from "entity";
 import { Rec } from "entity/core";
 import { div, g, One, S } from "galho";
 import { RecordStyle } from "galhui/list";
 import { defRenderer, FieldPlatform, list as rawList } from "galhui/list";
-import { input, output } from "galhui/io";
+import { output } from "galhui/io";
 import Table, { Column, Option } from "galhui/table";
-import { byKey, isF, l, sub, t } from "inutil";
+import { byKey, isF, isS, l, sub, t } from "inutil";
 import { copy } from "orray";
 import { card } from "./card";
-import { size } from "./fields";
+import { size, input } from "./fields";
 import { mdPost, mdPut } from "./form";
 import { all, ctxMenu, tryRemove } from "./tools";
 import { ibutton, $, C } from "galhui";
 import { wait } from "galhui/wait";
+import { fromArray } from "dic";
+import { is } from "galho/s";
 
 interface IEttCrud {
   add?(): any;
@@ -49,12 +51,15 @@ export interface itable extends IEttCrud {
   options?: Option<Dic>[];
   p?: FieldPlatform;
   style?: RecordStyle;
+  fill?: bool;
 }
-export function table(bond: Bond, i: itable = {}) {
+export async function table(bond: Bond | str, i: itable = {}) {
+  isS(bond) && (bond = await createBond(bond));
   let
     ent = bond.target,
     req = [ent.main],
-    allColumns = ent.fields.map((f: Field): Column => {
+    f = fields(ent, f => f.get),
+    allColumns = f.map((f: Field): Column => {
       let tp = fieldTypes[f.tp];
       return {
         opts: f,
@@ -66,17 +71,20 @@ export function table(bond: Bond, i: itable = {}) {
         fmt: tp.output?.bind(f),
       }
     });
+  l(bond.fields) || bond.fields.set(sub(fields(ent, (f: Field) => !f.side), "key"));
   if (i.iform) {
-    req.push(...sub(ent.fields.filter(v => v.req), "key"));
+    req.push(...sub(f.filter(v => v.req), "key"));
     for (let field of req)
       bond.fields.includes(field) || bond.fields.push(field);
   }
-  l(bond.fields) || bond.fields.set(sub(fields(ent, (f: Field) => !f.side), "key"));
+
+  await initFields(f, FieldActionType.get);
   return new Table<Dic>({
     sort: {
       clear: true,
-      call({ key: f, desc: d }, active) { bond.sort.set(active && [{ f, d }]); }
+      call({ key: f, desc: d }, active) { (bond as Bond).sort.set(active && [{ f, d }]); }
     },
+    fill: i.fill,
     single: i.single,
     p: i.p || defRenderer,
     corner: output(all(bond)),
@@ -85,11 +93,12 @@ export function table(bond: Bond, i: itable = {}) {
     allColumns, reqColumns: req, key: "id",
     columns: copy(bond.fields, v => byKey(allColumns, v)),
     remove: (...value) => tryRemove(ent, sub(value, 'id')),
-    menu: t(i.menu) && (() => ctxMenu(bond, { edit: i.edit })),
+    menu: t(i.menu) && (() => ctxMenu(bond as Bond, { edit: i.edit })),
     open: i.open || i.edit || ((value) => mdPut(ent, value?.id)),
-  }, bond.bind(), [fromArray(allColumns, v => [v.key, v.input()])]);
+    foot: i.iform && [cols => g("form", 0, [div(C.side, "+"), cols.map(c => input(field(ent, c.key)))])],
+  }, bond.bind());
 }
-
+// export const itable = async (ent: str, ...fields: str[]) => table(await createBond(ent, fields), { iform: true, fill: true });
 // export async function single(key: str) {
 //   let ent = await entity(key);
 //   return [
