@@ -68,7 +68,6 @@ function setMenu(src: str | IBond, options: L<Rec>) {
     //},
     g(pag).on('click', clearEvent)
   ])/*.css({ display: 'flex', flexDirection: 'column' }) */;
-
 }
 interface ISelectInputBase extends IRoot {
   filters?: str[];
@@ -82,11 +81,11 @@ class SelectInput extends Input<Key, ISelectInput>/* implements BindedInput*/ {
     let
       i = this.i,
       label = g("span"),
-      options = orray<Rec>(),
-      menu = setMenu(i.src, options),
+      opts = orray<Rec>(),
+      menu = setMenu(i.src, opts),
       root = setRoot(this, label, menu).on("keydown",
-        e => keydown(this, e, options, (v: int) => this.value = v));
-    this.on(e => ("value" in e) && setValue(this, { root, options, label, menu }));
+        e => keydown(this, e, opts, (v: int) => this.value = v));
+    this.on(e => ("value" in e) && setValue(this, { root, options: opts, label, menu }));
     return root;
   }
 
@@ -95,6 +94,24 @@ class SelectInput extends Input<Key, ISelectInput>/* implements BindedInput*/ {
   get disabled() { return this.i.off; }
   set disabled(state: bool) { this.set('off', state); }
 }
+// type IMSelectInput = IInput<Key[]> & ISelectInputBase & {}
+// class MSelectInput extends Input<Key[], IMSelectInput>/* implements BindedInput*/ {
+//   view() {
+//     let
+//       i = this.i,
+//       label = g("span"),
+//       opts = orray<Rec>(),
+//       menu = setMenu(i.src, opts),
+//       root = setRoot(this, label, menu).on("keydown",
+//         e => keydown(this, e, opts, (v: int) => this.value = v));
+//     this.on(e => ("value" in e) && setValue(this, { root, options: opts, label, menu }));
+//     return root;
+//   }
+//   applyoff() {
+//   }
+//   get disabled() { return this.i.off; }
+//   set disabled(state: bool) { this.set('off', state); }
+// }
 // export function linkedSelect(bond: Bond, { ph }: BSelectOpts = {}/*, callback?: () => void*/) {
 //   let
 //     mn = div(),
@@ -260,16 +277,19 @@ export function addInputs(types: Dic<FieldType>) {
 
   let
     output: (ctx: OutputCtx, o: SelectField) => any,
-    init = async (f: SelectField, tp) => {
+    mOutput: (ctx: OutputCtx<any[]>, o: SelectField) => any,
+    init = async (f: SelectField, tp:FieldActionType) => {
       if (tp == FieldActionType.set || ett$.linkTp != LinkType.processed)
         await entity(f.src);
     };
   switch (ett$.linkTp) {
     case LinkType.processed:
-      output = ({ v, p }) => v || p.null;
+      mOutput = output = ({ v, p }) => v || p.null;
       break;
     case LinkType.sub:
       output = ({ v, p }, o) => v ? v[(entity(o.src) as Entity).main] : p.null;
+      mOutput = ({ v, p }, o) => v ? v.map(v => v[(entity(o.src) as Entity).main]).join(', ') : p.null;
+
       break;
     case LinkType.raw:
       output = ({ v, p }, o) => v ? wait(async () => {
@@ -280,6 +300,14 @@ export function addInputs(types: Dic<FieldType>) {
           fields: [e.main]
         });
       }) : p.null;
+      mOutput = () => ({ v, p }, o) => v ? wait(async () => {
+        let e = await entity(o.link);
+        return (await select(e, {
+          tp: "col",
+          where: `in(${[ett$.id(e)]},${v})`,
+          fields: [e.main]
+        })).join('; ');
+      }) : p.null;
       break;
   }
   ex(types, {
@@ -289,28 +317,7 @@ export function addInputs(types: Dic<FieldType>) {
       size: () => 10
     },
     mlink: <FieldType>{
-      input: ({ key, req, link }: SelectField) => new MSelectInput({ key, req, link }),
-      output({ v, p }, o: SelectField) {
-        if (v == null) return p.null;
-        switch (ett$.linkTp) {
-          case LinkType.processed:
-            return v;
-          case LinkType.raw:
-            return wait(async () => {
-              let e = await entity(o.link);
-              return (await select(e, {
-                tp: "col",
-                where: `in(${[ett$.id(e)]},${v})`,
-                fields: [e.main]
-              })).join('; ');
-            });
-          case LinkType.sub:
-            return wait(async () => {
-              let m = (await entity(o.link)).main;
-              return (<any[]>v).map(v => v[m]).join('; ');
-            });
-        }
-      }, init,  
+      output:mOutput, init,
       size: () => 10
     }
   });
