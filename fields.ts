@@ -83,13 +83,9 @@ const defFT: Partial<FieldType> = {
 }
 /**checkbox format */
 export const cbFormats: Dic<(value: bool) => any> = {}
-export const addcbFmts = () => ex(cbFormats, {
+export const addcbFmts = (list: Dic<(value: bool) => any>) => ex(list, {
   icon: (value) =>
-    icon(isV(value) ?
-      value ?
-        { c: Color.accept, d: "check" } :
-        { c: Color.error, d: "close" } :
-      $.null()),
+    icon(isV(value) ? value ? $.i.check : $.i.close : $.null()),
   /**yes | no */
   yn: (value) => isV(value) ? value ? w.yes : w.no : "",
   /**true | false */
